@@ -1,62 +1,66 @@
 package com.compactmachinespor.core;
 
+import java.util.Random;
+
 public class RateEvaluator {
+
     /**
-     * @param timeSeriesData IO data array aggregated by second (e.g., length = 300)
-     * @return Fitted stable tick yield (k-value)
+     * Refactored using RANSAC to find the most consistent throughput rate.
+     * @param timeSeriesData IO data array aggregated by second.
+     * @return Fitted stable tick yield (k-value).
      */
     public static double evaluateStableRate(int[] timeSeriesData) {
         int n = timeSeriesData.length;
-        if (n == 0) return 0;
+        if (n < 2) return 0;
 
-        // 1. Calculate cumulative sum
-        // C[t] represents the total IO volume for the first t seconds
-        long[] C = new long[n + 1];
-        for (int i = 0; i < n; i++) {
-            C[i + 1] = C[i] + timeSeriesData[i];
+        // 1. Calculate cumulative sum (The "integral" of yield)
+        long[] C = new long[n];
+        C[0] = timeSeriesData[0];
+        for (int i = 1; i < n; i++) {
+            C[i] = C[i - 1] + timeSeriesData[i];
         }
 
-        // 2. Set reference region (assume the machine is stable in the last 1/3 of the time)
-        int tRef = (int) ((long) n * 2 / 3); // Prevent int overflow
-        if (n - tRef <= 0) return 0; // Prevent boundary cases where the array is too small
+        // RANSAC Parameters
+        int iterations = 100;    // Number of random trials
+        double threshold = 2.0;  // Max vertical distance to be an "inlier"
+        int bestInlierCount = -1;
+        double bestSlope = 0;
 
-        // Calculate baseline per-second yield (slope) for the reference interval
-        double kRef = (double) (C[n] - C[tRef]) / (n - tRef);
+        Random rand = new Random();
 
-        // 3. Calculate maximum oscillation amplitude within the reference region
-        double maxDev = 0;
-        for (int t = tRef; t <= n; t++) {
-            // E_t is the theoretical cumulative amount deduced backward from the end
-            double expectedC = C[n] - kRef * (n - t);
-            double deviation = C[t] - expectedC;
-            if (Math.abs(deviation) > maxDev) {
-                maxDev = Math.abs(deviation);
+        // 2. RANSAC Loop
+        for (int i = 0; i < iterations; i++) {
+            // Pick two random distinct indices
+            int idx1 = rand.nextInt(n);
+            int idx2 = rand.nextInt(n);
+            if (idx1 == idx2) continue;
+
+            // Calculate slope (k) and intercept (b) between these two points
+            // Formula: k = (y2 - y1) / (x2 - x1)
+            double k = (double) (C[idx2] - C[idx1]) / (idx2 - idx1);
+            double b = C[idx1] - k * idx1;
+
+            int currentInliers = 0;
+            // 3. Count how many points fit this linear model
+            for (int t = 0; t < n; t++) {
+                double expectedC = k * t + b;
+                if (Math.abs(C[t] - expectedC) < threshold) {
+                    currentInliers++;
+                }
+            }
+
+            // 4. Keep the model that explains the most data
+            if (currentInliers > bestInlierCount) {
+                bestInlierCount = currentInliers;
+                bestSlope = k;
             }
         }
 
-        // 4. Set tolerance threshold
-        // Tolerance = max(2 * oscillation amplitude, 1.5 * yield, minimum protection)
-        double tolerance = Math.max(maxDev * 2.0, Math.max(kRef * 1.5, 1.0));
-
-        // 5. Search backward for the boundary of warm-up/cache dumping period
-        int stableStart = 0;
-        for (int t = tRef - 1; t >= 0; t--) {
-            double expectedC = C[n] - kRef * (n - t);
-            double deviation = Math.abs(C[t] - expectedC);
-
-            // If deviation exceeds tolerance, t is in an unstable state (warm-up or dumping)
-            if (deviation > tolerance) {
-                stableStart = t + 1; // Stable period starts from the next moment
-                break;
-            }
-        }
-
-        // 6. Calculate final result
-        int stableDuration = n - stableStart;
-        if (stableDuration <= 0) return 0;
-
-        double finalRatePerSecond = (double) (C[n] - C[stableStart]) / stableDuration;
-        // Convert to yield per tick (divide by 20)
+        // 5. Final conversion
+        // Ensure we don't return negative rates from weird noise
+        double finalRatePerSecond = Math.max(0, bestSlope);
+        
+        // Convert to yield per tick (Minecraft 20 TPS standard)
         return finalRatePerSecond / 20.0;
     }
 }
