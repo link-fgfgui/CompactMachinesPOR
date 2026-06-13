@@ -26,5 +26,9 @@
   "chat.compactmachinespor.item": "物品",
   "chat.compactmachinespor.fluid": "流体",
   "chat.compactmachinespor.added": "添加",
-  "chat.compactmachinespor.removed": "移除"
+  "chat.compactmachinespor.removed": "移除",
+  "chat.compactmachinespor.suspicious_blocks": "§c[压缩空间] 房间内包含不可审计的存储模组(AE2/RS等)，评估已终止。",
+  "config.compactmachinespor.enable_inventory_audit": "启用库存审计",
+  "config.compactmachinespor.suspicious_mods": "可疑模组ID",
+  "config.compactmachinespor.suspicious_blocks": "可疑方块ID"
 }

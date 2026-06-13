@@ -133,14 +133,21 @@ public abstract class BaseIOBlockEntity extends RoomCodeBlockEntity {
     protected void handle(Holder<?> holder, int count) {
         if (!checkAndDeactivate()) return;
         if (getLevel() instanceof ServerLevel serverLevel) {
-            Core.setMachineData(roomCode, getDataSetType(), holder, count, Core.getTicks(serverLevel));
+            DataSetType type = getDataSetType();
+            long ticks = Core.getTicks(serverLevel);
+            Core.setMachineData(roomCode, type, holder, count, ticks);
+            // 累计 IO 总量（用于库存基线审计）
+            Core.getMachine(roomCode).addTotal(type, holder, count);
         }
     }
 
     protected void handle(int energy) {
         if (!checkAndDeactivate()) return;
         if (getLevel() instanceof ServerLevel serverLevel) {
-            Core.getMachine(roomCode).addEnergyData(getDataSetType(), energy, Core.getTicks(serverLevel));
+            DataSetType type = getDataSetType();
+            Core.getMachine(roomCode).addEnergyData(type, energy, Core.getTicks(serverLevel));
+            // 累计 IO 总量（用于库存基线审计）
+            Core.getMachine(roomCode).addTotalEnergy(type, energy);
         }
     }
 

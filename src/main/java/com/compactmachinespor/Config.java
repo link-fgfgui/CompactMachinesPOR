@@ -25,5 +25,25 @@ public class Config {
             .translation("config.compactmachinespor.unpack_permission_level")
             .defineInRange("PermissionLevel", 2, 0, 4);
 
+    public static final ModConfigSpec.BooleanValue ENABLE_INVENTORY_AUDIT = BUILDER
+            .comment("Enable inventory baseline audit (conservation check)")
+            .translation("config.compactmachinespor.enable_inventory_audit")
+            .define("EnableInventoryAudit", true);
+
+    public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> SUSPICIOUS_MODS = BUILDER
+            .comment("Mod IDs whose blocks are untrusted (unscannable storage, e.g. AE2). Evaluation aborts if found.")
+            .translation("config.compactmachinespor.suspicious_mods")
+            .defineListAllowEmpty("SuspiciousMods", java.util.List.of("ae2", "refinedstorage"), o -> o instanceof String);
+
+    public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> SUSPICIOUS_BLOCKS = BUILDER
+            .comment("Specific block IDs (namespace:path) that are untrusted.")
+            .translation("config.compactmachinespor.suspicious_blocks")
+            .defineListAllowEmpty("SuspiciousBlocks", java.util.List.of(), o -> o instanceof String);
+
+    public static final ModConfigSpec.BooleanValue ENABLE_FACTORY_REVERT = BUILDER
+            .comment("Allow launcher stick to revert FactoryBlock back to bound machine. Default false to prevent item duplication.")
+            .translation("config.compactmachinespor.enable_factory_revert")
+            .define("EnableFactoryRevert", false);
+
     static final ModConfigSpec SPEC = BUILDER.build();
 }

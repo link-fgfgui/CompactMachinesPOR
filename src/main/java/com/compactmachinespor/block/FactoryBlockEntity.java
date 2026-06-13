@@ -327,6 +327,9 @@ public class FactoryBlockEntity extends RoomCodeBlockEntity {
         loadFluidMap(tag, "output_fluids", outputFluids);
         inputEnergy = loadEnergy(tag, "input_energy");
         outputEnergy = loadEnergy(tag, "output_energy");
+        if (tag.contains("original_attachments")) {
+            originalAttachments = tag.getCompound("original_attachments");
+        }
         updateLists();
     }
 
@@ -339,6 +342,9 @@ public class FactoryBlockEntity extends RoomCodeBlockEntity {
         saveFluidMap(tag, "output_fluids", outputFluids);
         saveEnergy(tag, "input_energy", inputEnergy);
         saveEnergy(tag, "output_energy", outputEnergy);
+        if (originalAttachments != null) {
+            tag.put("original_attachments", originalAttachments);
+        }
     }
 
     public IItemHandler getItemHandler() {
@@ -558,6 +564,18 @@ public class FactoryBlockEntity extends RoomCodeBlockEntity {
             return e;
         }
         return null;
+    }
+
+    // 原始 machine_color 所在 neoforge:attachments，由 Core.finish() 设置
+    private CompoundTag originalAttachments;
+
+    public CompoundTag getOriginalAttachments() {
+        return originalAttachments;
+    }
+
+    public void setOriginalAttachments(CompoundTag attachments) {
+        this.originalAttachments = attachments;
+        setChanged();
     }
 
     public List<List<?>> getForShow() {

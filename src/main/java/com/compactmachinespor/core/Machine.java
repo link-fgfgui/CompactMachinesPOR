@@ -2,12 +2,14 @@ package com.compactmachinespor.core;
 
 import com.compactmachinespor.Config;
 import net.minecraft.core.BlockPos;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.core.Holder;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class Machine {
@@ -20,6 +22,15 @@ public class Machine {
     public int lastSpeed = 0;
 
     public List<Data> EnergyData = null;
+
+    // 库存基线审计字段
+    public final Map<Holder<?>, Long> totalInput = new ConcurrentHashMap<>();
+    public final Map<Holder<?>, Long> totalOutput = new ConcurrentHashMap<>();
+    public InventorySnapshot inventoryStart;
+    public InventorySnapshot inventoryEnd;
+
+    // 原机器的 neoforge:attachments（含 machine_color），由 createMachine 从 EvaluatorBlockEntity 读取
+    public CompoundTag originalAttachments;
 
     public static final int EVALUATE_SECONDS = Config.EVALUATE_SECONDS.get();
 
@@ -80,6 +91,34 @@ public class Machine {
                 break;
             case Output:
                 dataAdd(EnergyData.getLast(), data, currentTick);
+        }
+    }
+
+    /**
+     * 记录累计 IO 总量（用于库存基线审计）
+     */
+    public void addTotal(DataSetType type, Holder<?> id, long amount) {
+        Map<Holder<?>, Long> target = switch (type) {
+            case Input -> totalInput;
+            case Output -> totalOutput;
+        };
+        target.merge(id, amount, Long::sum);
+    }
+
+    public void addTotalEnergy(DataSetType type, long amount) {
+        Map<Holder<?>, Long> target = switch (type) {
+            case Input -> totalInput;
+            case Output -> totalOutput;
+        };
+        target.merge(Holder.direct(null), amount, Long::sum);
+    }
+
+    /**
+     * 房间库存快照，由 Core.scanInventory() 生成
+     */
+    public record InventorySnapshot(Map<Holder<?>, Long> items, Map<Holder<?>, Long> fluids, long energy) {
+        public static InventorySnapshot empty() {
+            return new InventorySnapshot(new ConcurrentHashMap<>(), new ConcurrentHashMap<>(), 0);
         }
     }
 

@@ -26,5 +26,9 @@
   "chat.compactmachinespor.item": "Item",
   "chat.compactmachinespor.fluid": "Fluid",
   "chat.compactmachinespor.added": "added",
-  "chat.compactmachinespor.removed": "removed"
+  "chat.compactmachinespor.removed": "removed",
+  "chat.compactmachinespor.suspicious_blocks": "§c[CM] Room contains unscannable storage (AE2/RS/etc). Evaluation aborted.",
+  "config.compactmachinespor.enable_inventory_audit": "Enable Inventory Audit",
+  "config.compactmachinespor.suspicious_mods": "Suspicious Mod IDs",
+  "config.compactmachinespor.suspicious_blocks": "Suspicious Block IDs"
 }

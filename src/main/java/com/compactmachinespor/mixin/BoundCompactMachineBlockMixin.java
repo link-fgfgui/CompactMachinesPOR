@@ -6,6 +6,9 @@ import com.compactmachinespor.core.Core;
 import dev.compactmods.machines.machine.block.BoundCompactMachineBlock;
 import dev.compactmods.machines.machine.block.BoundCompactMachineBlockEntity;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.ItemInteractionResult;
@@ -36,9 +39,16 @@ public class BoundCompactMachineBlockMixin {
                 stack.shrink(1);
                 if (!level.isClientSide && level instanceof ServerLevel serverLevel) {
                     player.inventoryMenu.broadcastChanges();
-                    String roomCode = ((BoundCompactMachineBlockEntity) Objects.requireNonNull(level.getBlockEntity(pos))).connectedRoom();
+                    BoundCompactMachineBlockEntity cmBe = (BoundCompactMachineBlockEntity) Objects.requireNonNull(level.getBlockEntity(pos));
+                    String roomCode = cmBe.connectedRoom();
+                    ResourceLocation originalBlockId = BuiltInRegistries.BLOCK.getKey(state.getBlock());
+                    // 保存完整的 BE NBT 用于还原（含 data components）
+                    CompoundTag savedNbt = cmBe.saveWithId(serverLevel.registryAccess());
+
                     Core.replaceBlock(serverLevel, pos, Cyumocompactmachinespor.EVALUATOR_BLOCK);
-                    ((EvaluatorBlockEntity) Objects.requireNonNull(serverLevel.getBlockEntity(pos))).setRoomCode(roomCode);
+                    EvaluatorBlockEntity evBe = (EvaluatorBlockEntity) Objects.requireNonNull(serverLevel.getBlockEntity(pos));
+                    evBe.setRoomCode(roomCode);
+                    evBe.saveOriginalMachine(originalBlockId, savedNbt);
                     cir.setReturnValue(ItemInteractionResult.SUCCESS);
                 }
             }
