@@ -5,7 +5,7 @@ public class RateEvaluator {
      * @param timeSeriesData IO data array aggregated by second (e.g., length = 300)
      * @return Fitted stable tick yield (k-value)
      */
-    public static double evaluateStableRate(int[] timeSeriesData) {
+    public static double evaluateStableRate(long[] timeSeriesData) {
         int n = timeSeriesData.length;
         if (n == 0) return 0;
 
@@ -58,5 +58,13 @@ public class RateEvaluator {
         double finalRatePerSecond = (double) (C[n] - C[stableStart]) / stableDuration;
         // Convert to yield per tick (divide by 20)
         return finalRatePerSecond / 20.0;
+    }
+
+    public static double evaluateStableRate(int[] timeSeriesData) {
+        long[] converted = new long[timeSeriesData.length];
+        for (int i = 0; i < timeSeriesData.length; i++) {
+            converted[i] = timeSeriesData[i];
+        }
+        return evaluateStableRate(converted);
     }
 }

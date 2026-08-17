@@ -4,6 +4,7 @@ import com.compactmachinespor.Cyumocompactmachinespor;
 import com.compactmachinespor.block.BaseIOBlock;
 import com.compactmachinespor.block.BaseIOBlockEntity;
 import com.compactmachinespor.block.FactoryBlockEntity;
+import com.compactmachinespor.resource.ResourceKey;
 import dev.compactmods.machines.api.CompactMachines;
 import dev.compactmods.machines.api.component.CMDataComponents;
 import dev.compactmods.machines.api.dimension.CompactDimension;
@@ -33,7 +34,6 @@ import java.util.stream.Collectors;
 import static dev.compactmods.machines.machine.Machines.Items.BOUND_MACHINE;
 import static net.minecraft.world.phys.shapes.Shapes.EPSILON;
 
-
 public class Core {
     private static final Map<String, Machine> MACHINES = new ConcurrentHashMap<>();
     private static final Map<String, UUID> ROOM2UUID = new ConcurrentHashMap<>();
@@ -47,16 +47,21 @@ public class Core {
         MACHINES.put(roomCode, new Machine(getTicks(overworldLevel), roomCode, targetPos));
         ROOM2UUID.put(roomCode, UUID.randomUUID());
         ServerLevel compactWorld = overworldLevel.getServer().getLevel(CompactDimension.LEVEL_KEY);
-        loadRoom(compactWorld, roomCode);
-        scanRoom(compactWorld, roomCode);
+        if (compactWorld != null) {
+            loadRoom(compactWorld, roomCode);
+            scanRoom(compactWorld, roomCode);
+        }
     }
 
     public static Machine getMachine(String roomCode) {
         return MACHINES.get(roomCode);
     }
 
-    public static void setMachineData(String roomCode, Machine.DataSetType type, Holder<?> id, int data, long tickTime) {
-        getMachine(roomCode).addData(type, id, data, tickTime);
+    public static void setMachineData(String roomCode, Machine.DataSetType type, ResourceKey<?> id, long data, long tickTime) {
+        Machine machine = getMachine(roomCode);
+        if (machine != null) {
+            machine.addData(type, id, data, tickTime);
+        }
     }
 
     public static long getTicks(ServerLevel level) {
@@ -72,18 +77,23 @@ public class Core {
     }
 
     public static void forceRoom(ServerLevel level, String roomCode, boolean add) {
-        Objects.requireNonNull(getRoomBoundaries(level, roomCode)).innerChunkPositions().forEach(
+        IRoomBoundaries boundaries = getRoomBoundaries(level, roomCode);
+        if (boundaries == null) return;
+        UUID uuid = ROOM2UUID.get(roomCode);
+        if (uuid == null) return;
+        boundaries.innerChunkPositions().forEach(
                 chunkPos -> CompactMachinesServer.CHUNK_TICKET_CONTROLLER.forceChunk(
                         level,
-                        ROOM2UUID.get(roomCode),
+                        uuid,
                         chunkPos.x, chunkPos.z, add, true
                 )
         );
-
     }
 
     public static void scanRoom(ServerLevel compactWorld, String roomCode) {
-        AABB roomAABB = Objects.requireNonNull(getRoomBoundaries(compactWorld, roomCode)).outerBounds();
+        IRoomBoundaries boundaries = getRoomBoundaries(compactWorld, roomCode);
+        if (boundaries == null) return;
+        AABB roomAABB = boundaries.outerBounds();
         int startX = (int) Math.floor(roomAABB.minX);
         int startY = (int) Math.floor(roomAABB.minY);
         int startZ = (int) Math.floor(roomAABB.minZ);
@@ -113,7 +123,7 @@ public class Core {
             }
         }
 
-        Objects.requireNonNull(getRoomBoundaries(compactWorld, roomCode)).innerChunkPositions().forEach(
+        boundaries.innerChunkPositions().forEach(
                 chunkPos -> compactWorld.getChunk(chunkPos.x, chunkPos.z).setUnsaved(true));
     }
 
@@ -122,8 +132,13 @@ public class Core {
         BlockState blockState = level.getBlockState(pos);
         AntiCheat.runScanBlock(level, pos, blockState, roomCode);
         if (blockState.is(Cyumocompactmachinespor.INPUT_BLOCK) || blockState.is(Cyumocompactmachinespor.OUTPUT_BLOCK)) {
-            getMachine(roomCode).IOBlocks.add(pos);
-            ((BaseIOBlockEntity) Objects.requireNonNull(level.getBlockEntity(pos))).setRoomCode(roomCode);
+            Machine machine = getMachine(roomCode);
+            if (machine != null) {
+                machine.IOBlocks.add(pos);
+            }
+            if (level.getBlockEntity(pos) instanceof BaseIOBlockEntity ioBe) {
+                ioBe.setRoomCode(roomCode);
+            }
         }
     }
 
@@ -144,13 +159,11 @@ public class Core {
             return;
         }
         Machine machine = getMachine(roomCode);
-        Map<Holder<?>, Double> inputData = calculate(machine.InputData);
-        if (machine.EnergyData != null) {
-            inputData.put(Holder.direct(null), RateEvaluator.evaluateStableRate(machine.EnergyData.getFirst().data()));
-        }
-        Map<Holder<?>, Double> outputData = calculate(machine.OutputData);
-        if (machine.EnergyData != null)
-            outputData.put(Holder.direct(null), RateEvaluator.evaluateStableRate(machine.EnergyData.getLast().data()));
+        if (machine == null) return;
+
+        Map<ResourceKey<?>, Double> inputData = calculate(machine.InputData);
+        Map<ResourceKey<?>, Double> outputData = calculate(machine.OutputData);
+
         machine.IOBlocks.forEach(
                 pos ->
                         compactWorld.setBlock(
@@ -160,19 +173,23 @@ public class Core {
                                 Block.UPDATE_ALL
                         )
         );
-        Objects.requireNonNull(getRoomBoundaries(compactWorld, roomCode)).innerChunkPositions().forEach(
-                chunkPos -> compactWorld.getChunk(chunkPos.x, chunkPos.z).setUnsaved(true));
+        IRoomBoundaries boundaries = getRoomBoundaries(compactWorld, roomCode);
+        if (boundaries != null) {
+            boundaries.innerChunkPositions().forEach(
+                    chunkPos -> compactWorld.getChunk(chunkPos.x, chunkPos.z).setUnsaved(true));
+        }
         unLoadRoom(compactWorld, roomCode);
         replaceBlock(overworld, overworldPos, Cyumocompactmachinespor.FACTORY_BLOCK);
-        FactoryBlockEntity be = (FactoryBlockEntity) Objects.requireNonNull(overworld.getBlockEntity(overworldPos));
-        be.setRoomCode(roomCode);
-        be.initTanks(inputData, outputData);
+        if (overworld.getBlockEntity(overworldPos) instanceof FactoryBlockEntity be) {
+            be.setRoomCode(roomCode);
+            be.init(inputData, outputData);
+        }
         MACHINES.remove(roomCode);
         ROOM2UUID.remove(roomCode);
         compactWorld.getChunkSource().tick(() -> true, false);
     }
 
-    public static Map<Holder<?>, Double> calculate(Map<Holder<?>, Machine.Data> dataMap) {
+    public static Map<ResourceKey<?>, Double> calculate(Map<ResourceKey<?>, Machine.Data> dataMap) {
         return dataMap
                 .entrySet()
                 .stream()
@@ -195,5 +212,4 @@ public class Core {
         stack.set(CMDataComponents.MACHINE_COLOR, MachineColor.fromARGB(0xFFC95B13));
         return stack;
     }
-
 }

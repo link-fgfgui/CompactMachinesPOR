@@ -25,6 +25,8 @@
   "chat.compactmachinespor.io_update": "%1$s %2$s has been %3$s",
   "chat.compactmachinespor.item": "Item",
   "chat.compactmachinespor.fluid": "Fluid",
+  "chat.compactmachinespor.energy": "Energy",
+  "chat.compactmachinespor.chemical": "Chemical",
   "chat.compactmachinespor.added": "added",
   "chat.compactmachinespor.removed": "removed"
 }

@@ -49,6 +49,17 @@ repositories {
             includeGroup "maven.modrinth"
         }
     }
+    exclusiveContent {
+        forRepository {
+            maven {
+                name = "ModMaven"
+                url = "https://modmaven.dev/"
+            }
+        }
+        filter {
+            includeGroup "mekanism"
+        }
+    }
 }
 
 base {
@@ -158,6 +169,7 @@ def extractCompactMachinesApi = tasks.register('extractCompactMachinesApi', Copy
 
 
 dependencies {
+    compileOnly "mekanism:Mekanism:${mekanism_version}:api"
     implementation "curse.maven:compact-machines-224218:7621553"
     compileOnly files(extractedApis.map { it.file("dev.compactmods.compactmachines.core-api-7.0.81.jar") }) {
         builtBy extractCompactMachinesApi

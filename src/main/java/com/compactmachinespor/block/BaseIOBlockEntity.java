@@ -2,57 +2,92 @@ package com.compactmachinespor.block;
 
 import com.compactmachinespor.core.Core;
 import com.compactmachinespor.core.Machine.DataSetType;
+import com.compactmachinespor.resource.ResourceKey;
+import com.compactmachinespor.resource.ResourceType;
+import com.compactmachinespor.resource.impl.FluidResourceType;
+import com.compactmachinespor.resource.impl.ItemResourceType;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Holder;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.component.DataComponentMap;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
-import net.neoforged.neoforge.energy.IEnergyStorage;
-import net.neoforged.neoforge.fluids.FluidStack;
-import net.neoforged.neoforge.fluids.capability.IFluidHandler;
-import net.neoforged.neoforge.items.IItemHandler;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 public abstract class BaseIOBlockEntity extends RoomCodeBlockEntity {
-    protected List<ResourceLocation> items = new ArrayList<>();
-    protected List<ResourceLocation> fluids = new ArrayList<>();
+    protected final Set<ResourceKey<?>> whitelist = new LinkedHashSet<>();
 
     public BaseIOBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
         super(type, pos, state);
     }
 
+    @SuppressWarnings("unchecked")
+    public <T> List<ResourceKey<T>> getWhitelistedKeys(ResourceType<T> type) {
+        List<ResourceKey<T>> list = new ArrayList<>();
+        for (ResourceKey<?> key : whitelist) {
+            if (key.type().getId().equals(type.getId())) {
+                list.add((ResourceKey<T>) key);
+            }
+        }
+        return list;
+    }
+
+    public boolean hasResource(ResourceKey<?> key) {
+        return whitelist.contains(key);
+    }
+
+    public void addResource(ResourceKey<?> key) {
+        whitelist.add(key);
+        setChanged();
+    }
+
+    public void removeResource(ResourceKey<?> key) {
+        whitelist.remove(key);
+        setChanged();
+    }
+
+    public Set<ResourceKey<?>> getWhitelist() {
+        return Collections.unmodifiableSet(whitelist);
+    }
+
     @Override
     protected void loadCommon(CompoundTag tag) {
         super.loadCommon(tag);
-        items.clear();
+        whitelist.clear();
+        if (tag.contains("whitelist", Tag.TAG_LIST)) {
+            ListTag list = tag.getList("whitelist", Tag.TAG_COMPOUND);
+            for (int i = 0; i < list.size(); i++) {
+                ResourceKey<?> key = ResourceKey.deserialize(list.getCompound(i));
+                if (key != null) whitelist.add(key);
+            }
+        }
+        // Legacy backward compatibility
         if (tag.contains("items", Tag.TAG_LIST)) {
             ListTag list = tag.getList("items", Tag.TAG_STRING);
             for (int i = 0; i < list.size(); i++) {
                 ResourceLocation rl = ResourceLocation.tryParse(list.getString(i));
-                if (rl != null && BuiltInRegistries.ITEM.containsKey(rl)) items.add(rl);
+                if (rl != null && BuiltInRegistries.ITEM.containsKey(rl)) {
+                    whitelist.add(new ResourceKey<>(ItemResourceType.INSTANCE, BuiltInRegistries.ITEM.get(rl)));
+                }
             }
         }
-        fluids.clear();
         if (tag.contains("fluids", Tag.TAG_LIST)) {
             ListTag list = tag.getList("fluids", Tag.TAG_STRING);
             for (int i = 0; i < list.size(); i++) {
                 ResourceLocation rl = ResourceLocation.tryParse(list.getString(i));
-                if (rl != null && BuiltInRegistries.FLUID.containsKey(rl)) fluids.add(rl);
+                if (rl != null && BuiltInRegistries.FLUID.containsKey(rl)) {
+                    whitelist.add(new ResourceKey<>(FluidResourceType.INSTANCE, BuiltInRegistries.FLUID.get(rl)));
+                }
             }
         }
     }
@@ -60,25 +95,14 @@ public abstract class BaseIOBlockEntity extends RoomCodeBlockEntity {
     @Override
     protected void saveCommon(CompoundTag tag) {
         super.saveCommon(tag);
-        ListTag itemsTag = new ListTag();
-        for (ResourceLocation id : items) {
-            itemsTag.add(StringTag.valueOf(id.toString()));
+        ListTag list = new ListTag();
+        for (ResourceKey<?> key : whitelist) {
+            list.add(key.serialize());
         }
-        tag.put("items", itemsTag);
-        ListTag fluidsTag = new ListTag();
-        for (ResourceLocation id : fluids) {
-            fluidsTag.add(StringTag.valueOf(id.toString()));
-        }
-        tag.put("fluids", fluidsTag);
+        tag.put("whitelist", list);
     }
 
-    public abstract IItemHandler getItemHandler();
-
-    public abstract IFluidHandler getFluidHandler();
-
-    public abstract IEnergyStorage getEnergyHandler();
-
-    protected boolean isActive() {
+    public boolean isActive() {
         if (getBlockState().getValue(BaseIOBlock.ACTIVE)) {
             return checkAndDeactivate();
         }
@@ -112,14 +136,6 @@ public abstract class BaseIOBlockEntity extends RoomCodeBlockEntity {
         }
     }
 
-    protected void handle(ItemStack itemStack) {
-        handle(itemStack.getItemHolder(), itemStack.getCount());
-    }
-
-    protected void handle(FluidStack fluidStack) {
-        handle(fluidStack.getFluidHolder(), fluidStack.getAmount());
-    }
-
     protected DataSetType getDataSetType() {
         if (this instanceof InputBlockEntity) {
             return DataSetType.Input;
@@ -130,17 +146,10 @@ public abstract class BaseIOBlockEntity extends RoomCodeBlockEntity {
         }
     }
 
-    protected void handle(Holder<?> holder, int count) {
+    public void recordIO(ResourceKey<?> key, long amount) {
         if (!checkAndDeactivate()) return;
         if (getLevel() instanceof ServerLevel serverLevel) {
-            Core.setMachineData(roomCode, getDataSetType(), holder, count, Core.getTicks(serverLevel));
-        }
-    }
-
-    protected void handle(int energy) {
-        if (!checkAndDeactivate()) return;
-        if (getLevel() instanceof ServerLevel serverLevel) {
-            Core.getMachine(roomCode).addEnergyData(getDataSetType(), energy, Core.getTicks(serverLevel));
+            Core.setMachineData(roomCode, getDataSetType(), key, amount, Core.getTicks(serverLevel));
         }
     }
 

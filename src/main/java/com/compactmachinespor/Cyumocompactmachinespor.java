@@ -1,6 +1,13 @@
 package com.compactmachinespor;
 
 import com.compactmachinespor.block.*;
+import com.compactmachinespor.resource.ResourceType;
+import com.compactmachinespor.resource.ResourceTypeRegistry;
+import com.compactmachinespor.resource.event.RegisterCMPResourceTypesEvent;
+import com.compactmachinespor.resource.impl.EnergyResourceType;
+import com.compactmachinespor.resource.impl.FluidResourceType;
+import com.compactmachinespor.resource.impl.ItemResourceType;
+import com.compactmachinespor.resource.impl.MekanismIntegration;
 import com.mojang.logging.LogUtils;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
@@ -11,8 +18,10 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
+import net.neoforged.fml.ModLoader;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.config.ModConfig;
+import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.registries.DeferredBlock;
 import net.neoforged.neoforge.registries.DeferredHolder;
@@ -62,22 +71,23 @@ public class Cyumocompactmachinespor {
         BLOCK_ENTITIES.register(modEventBus);
         CREATIVE_MODE_TABS.register(modEventBus);
 
+        // Register default resource types
+        ResourceTypeRegistry.register(ItemResourceType.INSTANCE);
+        ResourceTypeRegistry.register(FluidResourceType.INSTANCE);
+        ResourceTypeRegistry.register(EnergyResourceType.INSTANCE);
+        MekanismIntegration.init();
+
+        // Allow third-party addons to register custom resource types
+        ModLoader.postEvent(new RegisterCMPResourceTypesEvent());
+
         modEventBus.addListener(this::registerCapabilities);
         NeoForge.EVENT_BUS.addListener(ServerTick::onServerTickEvent);
         modContainer.registerConfig(ModConfig.Type.COMMON, Config.SPEC);
     }
 
-    private void registerCapabilities(net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent event) {
-        event.registerBlockEntity(net.neoforged.neoforge.capabilities.Capabilities.ItemHandler.BLOCK, INPUT_BLOCK_ENTITY.get(), (be, side) -> be.getItemHandler());
-        event.registerBlockEntity(net.neoforged.neoforge.capabilities.Capabilities.FluidHandler.BLOCK, INPUT_BLOCK_ENTITY.get(), (be, side) -> be.getFluidHandler());
-        event.registerBlockEntity(net.neoforged.neoforge.capabilities.Capabilities.EnergyStorage.BLOCK, INPUT_BLOCK_ENTITY.get(), (be, side) -> be.getEnergyHandler());
-
-        event.registerBlockEntity(net.neoforged.neoforge.capabilities.Capabilities.ItemHandler.BLOCK, OUTPUT_BLOCK_ENTITY.get(), (be, side) -> be.getItemHandler());
-        event.registerBlockEntity(net.neoforged.neoforge.capabilities.Capabilities.FluidHandler.BLOCK, OUTPUT_BLOCK_ENTITY.get(), (be, side) -> be.getFluidHandler());
-        event.registerBlockEntity(net.neoforged.neoforge.capabilities.Capabilities.EnergyStorage.BLOCK, OUTPUT_BLOCK_ENTITY.get(), (be, side) -> be.getEnergyHandler());
-
-        event.registerBlockEntity(net.neoforged.neoforge.capabilities.Capabilities.ItemHandler.BLOCK, FACTORY_BLOCK_ENTITY.get(), (be, side) -> be.getItemHandler());
-        event.registerBlockEntity(net.neoforged.neoforge.capabilities.Capabilities.FluidHandler.BLOCK, FACTORY_BLOCK_ENTITY.get(), (be, side) -> be.getFluidHandler());
-        event.registerBlockEntity(net.neoforged.neoforge.capabilities.Capabilities.EnergyStorage.BLOCK, FACTORY_BLOCK_ENTITY.get(), (be, side) -> be.getEnergyHandler());
+    private void registerCapabilities(RegisterCapabilitiesEvent event) {
+        for (ResourceType<?> type : ResourceTypeRegistry.getAll()) {
+            type.registerCapabilities(event, INPUT_BLOCK_ENTITY.get(), OUTPUT_BLOCK_ENTITY.get(), FACTORY_BLOCK_ENTITY.get());
+        }
     }
 }
