@@ -42,9 +42,11 @@ public enum RoomCodeComponentProvider implements IBlockComponentProvider, IServe
 
     @Override
     public void appendServerData(CompoundTag data, BlockAccessor blockAccessor) {
-        String rc = ((RoomCodeBlockEntity) blockAccessor.getBlockEntity()).roomCode;
-        if (rc != null && !rc.isEmpty()) {
-            data.putString("rc", rc);
+        if (blockAccessor.getBlockEntity() instanceof RoomCodeBlockEntity be) {
+            String rc = be.roomCode;
+            if (rc != null && !rc.isEmpty()) {
+                data.putString("rc", rc);
+            }
         }
     }
 }

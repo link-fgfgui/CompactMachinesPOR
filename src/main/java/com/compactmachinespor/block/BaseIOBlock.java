@@ -48,12 +48,12 @@ public abstract class BaseIOBlock extends BaseEntityBlock {
     @Override
     @SuppressWarnings("unchecked")
     protected ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hitResult) {
-        if (level.isClientSide) {
-            return ItemInteractionResult.SUCCESS;
-        }
-
         if (stack.isEmpty()) {
             return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
+        }
+
+        if (level.isClientSide) {
+            return ItemInteractionResult.SUCCESS;
         }
 
         BlockEntity be = level.getBlockEntity(pos);

@@ -52,12 +52,12 @@ public abstract class ResourceType<T> {
     public abstract Optional<T> extractFromHand(ItemStack heldStack);
 
     /**
-     * Localized name for the type category (e.g. "物品", "流体", "能量", "化学品").
+     * Localized name for the type category (e.g. "Item", "Fluid", "Energy", "Chemical").
      */
     public abstract Component getTypeName();
 
     /**
-     * Localized display name for a specific resource value (e.g. "铁锭", "水", "氢气").
+     * Localized display name for a specific resource value (e.g. "Iron Ingot", "Water", "Hydrogen").
      */
     public abstract Component getValueName(@Nullable T value);
 

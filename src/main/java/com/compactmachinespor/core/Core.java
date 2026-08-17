@@ -165,13 +165,16 @@ public class Core {
         Map<ResourceKey<?>, Double> outputData = calculate(machine.OutputData);
 
         machine.IOBlocks.forEach(
-                pos ->
+                pos -> {
+                    BlockState st = compactWorld.getBlockState(pos);
+                    if (st.hasProperty(BaseIOBlock.ACTIVE)) {
                         compactWorld.setBlock(
                                 pos,
-                                compactWorld.getBlockState(pos)
-                                        .setValue(BaseIOBlock.ACTIVE, false),
+                                st.setValue(BaseIOBlock.ACTIVE, false),
                                 Block.UPDATE_ALL
-                        )
+                        );
+                    }
+                }
         );
         IRoomBoundaries boundaries = getRoomBoundaries(compactWorld, roomCode);
         if (boundaries != null) {

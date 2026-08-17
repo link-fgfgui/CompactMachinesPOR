@@ -21,6 +21,7 @@
   "tooltip.compactmachinespor.progress": "进度: %s%%",
   "tooltip.compactmachinespor.speed": "速度: %s/秒",
   "tooltip.compactmachinespor.ready": "准备就绪",
+  "tooltip.compactmachinespor.need_overworld": "需要主世界",
   "tooltip.compactmachinespor.noroomcode": "未绑定",
   "chat.compactmachinespor.io_update": "%1$s%2$s已%3$s",
   "chat.compactmachinespor.item": "物品",
@@ -28,5 +29,9 @@
   "chat.compactmachinespor.energy": "能量",
   "chat.compactmachinespor.chemical": "化学品",
   "chat.compactmachinespor.added": "添加",
-  "chat.compactmachinespor.removed": "移除"
+  "chat.compactmachinespor.removed": "移除",
+  "chat.compactmachinespor.unpack_denied": "权限不足，无法解包",
+  "chat.compactmachinespor.unpack_failed": "解包失败，factory block 已保留",
+  "chat.compactmachinespor.unpack_dropped": "背包已满，压缩机子已丢到脚下",
+  "chat.compactmachinespor.banned_block_detected": "空间内存在禁用方块，无法转换为评估方块"
 }

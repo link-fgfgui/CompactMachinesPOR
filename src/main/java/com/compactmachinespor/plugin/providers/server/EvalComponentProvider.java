@@ -7,6 +7,7 @@ import com.compactmachinespor.plugin.CMPJadePlugin;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.level.Level;
 import snownee.jade.api.BlockAccessor;
 import snownee.jade.api.IBlockComponentProvider;
 import snownee.jade.api.IServerDataProvider;
@@ -24,7 +25,11 @@ public enum EvalComponentProvider implements IBlockComponentProvider, IServerDat
     ) {
         CompoundTag serverData = accessor.getServerData();
         if (serverData.getInt("pg") <= 0) {
-            tooltip.add(Component.translatable("tooltip.compactmachinespor.ready"));
+            if (accessor.getLevel().dimension() == Level.OVERWORLD) {
+                tooltip.add(Component.translatable("tooltip.compactmachinespor.ready"));
+            } else {
+                tooltip.add(Component.translatable("tooltip.compactmachinespor.need_overworld"));
+            }
             return;
         }
         tooltip.add(Component.translatable("tooltip.compactmachinespor.progress", serverData.getInt("pg")));

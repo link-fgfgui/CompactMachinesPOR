@@ -21,6 +21,7 @@
   "tooltip.compactmachinespor.progress": "Progress: %s%%",
   "tooltip.compactmachinespor.speed": "Speed: %s/s",
   "tooltip.compactmachinespor.ready": "Ready",
+  "tooltip.compactmachinespor.need_overworld": "Needs Overworld",
   "tooltip.compactmachinespor.noroomcode": "Not Bound",
   "chat.compactmachinespor.io_update": "%1$s %2$s has been %3$s",
   "chat.compactmachinespor.item": "Item",
@@ -28,5 +29,9 @@
   "chat.compactmachinespor.energy": "Energy",
   "chat.compactmachinespor.chemical": "Chemical",
   "chat.compactmachinespor.added": "added",
-  "chat.compactmachinespor.removed": "removed"
+  "chat.compactmachinespor.removed": "removed",
+  "chat.compactmachinespor.unpack_denied": "Insufficient permissions to unpack",
+  "chat.compactmachinespor.unpack_failed": "Unpack failed, factory block preserved",
+  "chat.compactmachinespor.unpack_dropped": "Inventory full, bound machine dropped at your feet",
+  "chat.compactmachinespor.banned_block_detected": "Banned blocks detected inside the room, cannot convert to Evaluator Block"
 }

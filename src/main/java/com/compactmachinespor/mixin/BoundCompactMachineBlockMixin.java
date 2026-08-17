@@ -2,6 +2,7 @@ package com.compactmachinespor.mixin;
 
 import com.compactmachinespor.Cyumocompactmachinespor;
 import com.compactmachinespor.block.EvaluatorBlockEntity;
+import com.compactmachinespor.core.AntiCheat;
 import com.compactmachinespor.core.Core;
 import dev.compactmods.machines.machine.block.BoundCompactMachineBlock;
 import dev.compactmods.machines.machine.block.BoundCompactMachineBlockEntity;
@@ -19,8 +20,6 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-import java.util.Objects;
-
 @Mixin(BoundCompactMachineBlock.class)
 public class BoundCompactMachineBlockMixin {
     @Inject(
@@ -32,15 +31,23 @@ public class BoundCompactMachineBlockMixin {
             ItemStack stack, BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult result, CallbackInfoReturnable<ItemInteractionResult> cir
     ) {
         if (stack.is(Cyumocompactmachinespor.LAUNCHER_STICK)) {
-            if (level.getBlockEntity(pos) instanceof BoundCompactMachineBlockEntity) {
-                stack.shrink(1);
+            if (level.getBlockEntity(pos) instanceof BoundCompactMachineBlockEntity boundBe) {
                 if (!level.isClientSide && level instanceof ServerLevel serverLevel) {
-                    player.inventoryMenu.broadcastChanges();
-                    String roomCode = ((BoundCompactMachineBlockEntity) Objects.requireNonNull(level.getBlockEntity(pos))).connectedRoom();
+                    String roomCode = boundBe.connectedRoom();
+                    if (!AntiCheat.canConvertToEvaluator(serverLevel, pos, state, roomCode, player, stack, hand)) {
+                        cir.setReturnValue(ItemInteractionResult.FAIL);
+                        return;
+                    }
                     Core.replaceBlock(serverLevel, pos, Cyumocompactmachinespor.EVALUATOR_BLOCK);
-                    ((EvaluatorBlockEntity) Objects.requireNonNull(serverLevel.getBlockEntity(pos))).setRoomCode(roomCode);
-                    cir.setReturnValue(ItemInteractionResult.SUCCESS);
+                    if (serverLevel.getBlockEntity(pos) instanceof EvaluatorBlockEntity evaluatorBe) {
+                        evaluatorBe.setRoomCode(roomCode);
+                    }
+                    if (!player.hasInfiniteMaterials()) {
+                        stack.shrink(1);
+                    }
+                    player.inventoryMenu.broadcastChanges();
                 }
+                cir.setReturnValue(ItemInteractionResult.sidedSuccess(level.isClientSide));
             }
         }
     }
